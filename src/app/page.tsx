@@ -5,6 +5,7 @@ import { supabase } from "@/utils/supabase";
 import { calcularDistancia, calcularTarifa, esCoordenadaValida } from "@/utils/haversine";
 import dynamic from 'next/dynamic';
 
+//chupalo cristopito//
 
 // Definimos el mapa fuera del componente principal para evitar errores de renderizado
 const MapaInteractivo = dynamic(() => import('@/components/mapa'), { 
