@@ -6,23 +6,25 @@ interface Props {
 
 export default function PanelPrecio({ precio, isLoading, onConfirmar }: Props) {
   return (
-    <div className="mt-6 border-t pt-6 text-center">
-      <p className="text-gray-500 uppercase tracking-wide text-sm font-bold">
-        Tarifa Fija Calculada
-      </p>
-      <p className="text-4xl font-extrabold text-green-600 my-2">
-        ${precio.toLocaleString("es-CL")}
-      </p>
+    <div className="bg-gray-50 rounded-lg p-5">
+      <div className="flex justify-between items-baseline mb-3.5">
+        <span className="text-sm text-gray-500">Tarifa fija calculada</span>
+        <span className="text-3xl font-medium text-gray-900">
+          ${precio.toLocaleString("es-CL")}
+        </span>
+      </div>
+
       <button
         onClick={onConfirmar}
         disabled={isLoading}
-        className={`w-full font-bold py-3 px-4 rounded transition-all duration-300 transform 
-          ${isLoading
-            ? "bg-gray-400 cursor-not-allowed"
-            : "bg-green-500 hover:bg-green-600 hover:scale-105 text-white"
-          }`}
+        className={`w-full flex items-center justify-center gap-1.5 py-3 rounded-lg text-sm font-medium transition-colors ${
+          isLoading
+            ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+            : "bg-green-50 text-green-700 hover:bg-green-100"
+        }`}
       >
-        {isLoading ? "Procesando..." : "Confirmar Viaje"}
+        <i className={`ti ${isLoading ? "ti-loader-2" : "ti-check"} text-base`} aria-hidden="true" />
+        {isLoading ? "Procesando..." : "Confirmar viaje"}
       </button>
     </div>
   );
