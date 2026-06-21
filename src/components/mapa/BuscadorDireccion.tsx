@@ -31,7 +31,7 @@ export default function BuscadorDireccion({ onResultado }: Props) {
           onChange={(e) => setTexto(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="Busca una dirección, ej: Av. Apoquindo 4400"
-          className="w-full pl-9 pr-20 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300"
+          className="w-full pl-9 pr-20 py-2.5 text-sm text-gray-900 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300"
         />
         <button
           onClick={handleBuscar}

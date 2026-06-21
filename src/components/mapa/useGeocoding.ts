@@ -17,10 +17,13 @@ export function useGeocoding() {
     setError(null);
 
     try {
-      // Restringimos a Chile (countrycodes=cl) para evitar resultados irrelevantes
+
+      const viewbox = "-71.5,-32.9,-69.8,-34.3";
+      
+
       const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
         texto
-      )}&countrycodes=cl&limit=1`;
+      )}&countrycodes=cl&viewbox=${viewbox}&bounded=1&limit=1`;
 
       const res = await fetch(url, {
         headers: { "Accept-Language": "es" },
@@ -28,7 +31,7 @@ export function useGeocoding() {
       const data = await res.json();
 
       if (!data || data.length === 0) {
-        setError("No encontramos esa dirección. Intenta ser más específico.");
+        setError("No encontramos esa dirección dentro de la Región Metropolitana.");
         return null;
       }
 
