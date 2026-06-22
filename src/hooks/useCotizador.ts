@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { supabase } from "@/utils/supabase";
+import { Reglas } from "./useReglas";
 import {
   calcularDistancia,
   calcularTarifa,
@@ -12,17 +13,14 @@ const RECARGOS: Record<string, number> = {
   "Equipaje Extra": 500,
 };
 
-interface Reglas {
-  tarifa_base_clp: number;
-  costo_por_km_clp: number;
-  coeficiente_friccion: number;
-}
 
 export function useCotizador(reglas: Reglas | null, setMensaje: (m: string) => void) {
   const [lat, setLat] = useState("");
   const [lon, setLon] = useState("");
   const [tags, setTags] = useState<string[]>([]);
   const [precio, setPrecio] = useState<number | null>(null);
+  
+  const [isLoading, setIsLoading] = useState(false); 
 
   const toggleTag = (tag: string) => {
     setTags((prev) =>
@@ -58,9 +56,10 @@ export function useCotizador(reglas: Reglas | null, setMensaje: (m: string) => v
     setMensaje("¡Cotización calculada con éxito!");
   };
 
-  const confirmar = async (isLoading: boolean) => {
+  const confirmar = async () => {
     if (!precio || !lat || !lon || isLoading) return;
 
+    setIsLoading(true); 
     setMensaje("Guardando reserva con auditoría...");
 
     const { error } = await supabase.from("servicios_viajes").insert([
@@ -83,7 +82,9 @@ export function useCotizador(reglas: Reglas | null, setMensaje: (m: string) => v
     } else {
       setMensaje("❌ Error transaccional: " + error.message);
     }
+    
+    setIsLoading(false); 
   };
 
-  return { lat, setLat, lon, setLon, tags, precio, toggleTag, cotizar, confirmar };
+  return { lat, setLat, lon, setLon, tags, precio, isLoading, toggleTag, cotizar, confirmar };
 }

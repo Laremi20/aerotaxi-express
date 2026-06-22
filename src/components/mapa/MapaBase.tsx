@@ -18,8 +18,10 @@ const iconoInvalido = new L.Icon({
   shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
   iconSize: [25, 41],
   iconAnchor: [12, 41],
-  className: "marcador-invalido", // se tiñe vía CSS filter, ver nota abajo
+  className: "marcador-invalido",
 });
+
+const CENTRO_POR_DEFECTO_SCL: [number, number] = [-33.393, -70.7858];
 
 function CapturadorDeClics({ alHacerClic }: { alHacerClic: (lat: number, lon: number) => void }) {
   useMapEvents({
@@ -30,7 +32,6 @@ function CapturadorDeClics({ alHacerClic }: { alHacerClic: (lat: number, lon: nu
   return null;
 }
 
-// Recentra el mapa cuando lat/lon cambian por búsqueda o geolocalización (no por click directo)
 function RecentradorMapa({ lat, lon }: { lat: number | null; lon: number | null }) {
   const map = useMap();
   useEffect(() => {
@@ -49,8 +50,7 @@ interface Props {
 }
 
 export default function MapaBase({ lat, lon, esValido, onLocationSelect }: Props) {
-  const centroPorDefecto: [number, number] = [-33.393, -70.7858];
-  const centro: [number, number] = lat && lon ? [lat, lon] : centroPorDefecto;
+  const centro: [number, number] = lat && lon ? [lat, lon] : CENTRO_POR_DEFECTO_SCL;
 
   return (
     <MapContainer center={centro} zoom={11} style={{ height: "320px", width: "100%" }}>

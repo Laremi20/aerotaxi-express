@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { useGeocoding } from "./useGeocoding";
+import { useGeocoding } from "../../hooks/useGeocoding";
 
 interface Props {
   onResultado: (lat: number, lon: number) => void;

@@ -1,6 +1,6 @@
 import dynamic from "next/dynamic";
 
-const MapaInteractivo = dynamic(() => import("@/components/mapa"), {
+const MapaInteractivo = dynamic(() => import("@/components/mapa/MapaInteractivo"), {
   ssr: false,
   loading: () => <p className="p-4 text-center text-sm text-gray-400">Cargando mapa...</p>,
 });

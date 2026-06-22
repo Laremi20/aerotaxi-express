@@ -2,7 +2,7 @@
 import { useState } from "react";
 import MapaBase from "./MapaBase";
 import BuscadorDireccion from "./BuscadorDireccion";
-import BotonUbicacion from "./BotonUbicacion";
+
 import { esCoordenadaValida } from "@/utils/haversine";
 
 interface Props {
@@ -28,7 +28,7 @@ export default function MapaInteractivo({ lat, lon, onLocationSelect }: Props) {
       <MapaBase lat={lat} lon={lon} esValido={esValido} onLocationSelect={handleSeleccion} />
 
       <div className="flex items-center justify-between">
-        <BotonUbicacion onUbicacion={(lat, lon) => handleSeleccion(lat, lon)} />
+
         {lat !== null && !esValido && (
           <span className="text-xs text-red-600 flex items-center gap-1">
             <i className="ti ti-alert-triangle text-sm" aria-hidden="true" />
