@@ -12,11 +12,19 @@ import sombraMarcador from "leaflet/dist/images/marker-shadow.png";
 import type { Destino } from "@/lib/cotizador/destino";
 import { ORIGEN_SCL, type Coordenada } from "@/lib/tarifa/geo";
 
+// Turbopack entrega las imágenes de node_modules como texto con la URL, aunque los tipos de Next
+// digan StaticImageData (webpack sí entrega el objeto): se aceptan ambas formas.
+function urlDeImagen(imagen: unknown): string {
+  const url = typeof imagen === "string" ? imagen : (imagen as { src?: unknown } | null)?.src;
+  if (typeof url !== "string" || url.length === 0) throw new Error("Imagen del marcador sin URL");
+  return url;
+}
+
 // Imágenes del propio paquete leaflet (no de un CDN externo), con las medidas del ícono por defecto
 const OPCIONES_ICONO: L.IconOptions = {
-  iconUrl: iconoMarcador.src,
-  iconRetinaUrl: iconoMarcador2x.src,
-  shadowUrl: sombraMarcador.src,
+  iconUrl: urlDeImagen(iconoMarcador),
+  iconRetinaUrl: urlDeImagen(iconoMarcador2x),
+  shadowUrl: urlDeImagen(sombraMarcador),
   iconSize: [25, 41],
   iconAnchor: [12, 41],
   tooltipAnchor: [16, -28],
