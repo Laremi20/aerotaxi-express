@@ -1,4 +1,5 @@
 // Resultado de la cotización y su cierre (HU03; CU05). Solo muestra lo que devolvió /api/rutas.
+import Link from "next/link";
 import { IconoAlerta, IconoCheck, IconoX } from "@/components/iconos";
 import { puedeConfirmar, type EstadoCotizador } from "@/lib/cotizador/estado";
 import { formatearKm, formatearPesos } from "@/lib/cotizador/formato";
@@ -25,10 +26,19 @@ export default function PanelCotizacion({ estado, onConfirmar, onDescartar, onRe
       {/* Región viva: anuncia el cálculo, el monto, los errores y la confirmación */}
       <div aria-live="polite" className="flex flex-col gap-3">
         {confirmadaId !== null && (
-          <p className="flex items-start gap-2 rounded-xl bg-green-50 p-3 font-semibold text-green-800">
-            <IconoCheck className="mt-0.5 size-5 shrink-0" />
-            Cotización #{confirmadaId} confirmada, lista para asignar.
-          </p>
+          <div className="flex flex-col gap-2 rounded-xl bg-green-50 p-3">
+            <p className="flex items-start gap-2 font-semibold text-green-800">
+              <IconoCheck className="mt-0.5 size-5 shrink-0" />
+              Cotización #{confirmadaId} confirmada, lista para asignar.
+            </p>
+            {/* CU05 paso 4: abre el Calendario Maestro con la cotización preseleccionada (CU08) */}
+            <Link
+              href={`/calendario?cotizacion=${confirmadaId}`}
+              className={`${claseBoton} bg-blue-700 text-white hover:bg-blue-600`}
+            >
+              Asignar ahora
+            </Link>
+          </div>
         )}
 
         {!destino && confirmadaId === null && (
