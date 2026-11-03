@@ -71,6 +71,15 @@ begin
       raise exception 'Ejecuta primero supabase/seed.sql';
     end if;
 
+    -- Aísla la prueba de los datos reales: los viajes que ya tengan los conductores demo chocarían
+    -- con los de prueba (sin_topes, 23P01) y alterarían los conteos. Se revierte al final (ZT999).
+    -- La bitácora va primero porque viaje_evento referencia a viaje sin cascada.
+    delete from public.viaje_evento
+    where viaje_id in (select viaje_id from public.viaje where driver_id in (v_c1, v_c2, v_c3));
+    delete from public.viaje where driver_id in (v_c1, v_c2, v_c3);
+    update public.conductor set estado_disponibilidad = 'DISPONIBLE', is_active = true
+    where driver_id in (v_c1, v_c2, v_c3);
+
     -- Preparación (rol original, sin RLS)
     for i in 1..9 loop
       insert into public.cotizacion (flota_id, tarifa_id, creado_por, destino_texto, distancia_km,
