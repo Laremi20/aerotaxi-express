@@ -77,6 +77,21 @@ export function horaLocal(instante: Date): string {
 
 export const hoyLocal = (ahora: Date): string => fechaLocal(ahora);
 
+// Una fecha es un día del calendario, no un instante: se formatea en UTC para que no se corra de día
+const formatoFechaLarga = new Intl.DateTimeFormat("es-CL", {
+  timeZone: "UTC",
+  weekday: "long",
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+});
+
+// "miércoles, 4 de noviembre de 2026"
+export function fechaLarga(fecha: string): string {
+  const [anio, mes, dia] = fecha.split("-").map(Number);
+  return formatoFechaLarga.format(new Date(Date.UTC(anio, mes - 1, dia, 12)));
+}
+
 export function sumarDias(fecha: string, dias: number): string {
   const [anio, mes, dia] = fecha.split("-").map(Number);
   const resultado = new Date(Date.UTC(anio, mes - 1, dia + dias));

@@ -3,6 +3,7 @@ import {
   desfaseMs,
   esFecha,
   esHora,
+  fechaLarga,
   fechaLocal,
   horaLocal,
   hoyLocal,
@@ -122,6 +123,11 @@ describe("formato local y utilidades", () => {
         expect(horaLocal(resultado.instante)).toBe(hora);
       }
     }
+  });
+
+  it("fechaLarga en español sin correrse de día", () => {
+    expect(fechaLarga("2026-11-04")).toMatch(/^miércoles,? 4 de noviembre de 2026$/);
+    expect(fechaLarga("2027-01-01")).toMatch(/^viernes,? 1 de enero de 2027$/);
   });
 
   it("sumarDias cruza mes, año y años bisiestos", () => {

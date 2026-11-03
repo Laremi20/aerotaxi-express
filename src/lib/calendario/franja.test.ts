@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { construirFranja, horaSugeridaDesdeClic, marcasDelDia, MENSAJES_FRANJA, posicionEnDia } from "./franja";
+import {
+  construirFranja,
+  describirFranja,
+  horaInicialSugerida,
+  horaSugeridaDesdeClic,
+  marcasDelDia,
+  MENSAJES_FRANJA,
+  posicionEnDia,
+} from "./franja";
 import { horaLocal, rangoDelDia } from "./zona";
 
 const MINUTO_MS = 60_000;
@@ -121,5 +129,36 @@ describe("horaSugeridaDesdeClic", () => {
 
   it("el 6-sep-2026 el primer punto del día es 01:00", () => {
     expect(horaSugeridaDesdeClic(0, rangoDelDia("2026-09-06"))).toBe("01:00");
+  });
+});
+
+describe("describirFranja", () => {
+  it("dentro del día solo muestra las horas locales", () => {
+    expect(describirFranja(franja("2026-11-04T13:00:00Z", "2026-11-04T15:00:00Z"), "2026-11-04")).toBe("10:00–12:00");
+  });
+
+  it("indica el día cuando un extremo cae fuera del día mostrado", () => {
+    expect(describirFranja(franja("2026-11-05T02:00:00Z", "2026-11-05T04:00:00Z"), "2026-11-04")).toBe(
+      "23:00–01:00 del 5/11"
+    );
+    expect(describirFranja(franja("2026-11-05T02:00:00Z", "2026-11-05T04:00:00Z"), "2026-11-05")).toBe(
+      "23:00 del 4/11–01:00"
+    );
+  });
+});
+
+describe("horaInicialSugerida", () => {
+  it("hoy: el próximo cuarto de hora en hora de Santiago", () => {
+    // 10:07 local (−3)
+    expect(horaInicialSugerida("2026-11-04", new Date("2026-11-04T13:07:00Z"))).toBe("10:15");
+    expect(horaInicialSugerida("2026-11-04", new Date("2026-11-04T13:15:00Z"))).toBe("10:15");
+  });
+
+  it("hoy, pasadas las 23:45: no propone el día siguiente", () => {
+    expect(horaInicialSugerida("2026-11-04", new Date("2026-11-05T02:50:00Z"))).toBe("23:45");
+  });
+
+  it("otro día: 09:00", () => {
+    expect(horaInicialSugerida("2026-11-05", new Date("2026-11-04T13:07:00Z"))).toBe("09:00");
   });
 });

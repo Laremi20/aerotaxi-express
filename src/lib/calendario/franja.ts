@@ -1,9 +1,12 @@
 // Franja horaria de un viaje y su posición en la agenda del día (HU05, CU08, CU09). Funciones puras.
 import { DURACION_MAX, DURACION_MIN, PASO_MIN } from "./duracion";
-import { horaLocal, instanteDesdeLocal } from "./zona";
+import { fechaLocal, horaLocal, instanteDesdeLocal } from "./zona";
 
 const MINUTO_MS = 60_000;
 const HORA_MS = 60 * MINUTO_MS;
+
+// Hora con la que abre el formulario cuando el día elegido no es hoy
+export const HORA_POR_DEFECTO = "09:00";
 
 export interface Franja {
   inicio: Date;
@@ -69,4 +72,23 @@ export function horaSugeridaDesdeClic(fraccion: number, dia: Franja): string {
   // Tocar el borde derecho no debe proponer el día siguiente
   if (instante >= dia.fin.getTime()) instante -= paso;
   return horaLocal(new Date(instante));
+}
+
+// "10:00–12:00" en hora de Santiago; si un extremo cae en otro día, se agrega «del D/M»
+export function describirFranja(franja: Franja, fecha: string): string {
+  const extremo = (instante: Date) => {
+    const fechaExtremo = fechaLocal(instante);
+    if (fechaExtremo === fecha) return horaLocal(instante);
+    const [, mes, dia] = fechaExtremo.split("-").map(Number);
+    return `${horaLocal(instante)} del ${dia}/${mes}`;
+  };
+  return `${extremo(franja.inicio)}–${extremo(franja.fin)}`;
+}
+
+// Hora inicial del formulario: hoy, el próximo cuarto de hora; otro día, las 09:00
+export function horaInicialSugerida(fecha: string, ahora: Date): string {
+  if (fechaLocal(ahora) !== fecha) return HORA_POR_DEFECTO;
+  const paso = PASO_MIN * MINUTO_MS;
+  const siguiente = new Date(Math.ceil(ahora.getTime() / paso) * paso);
+  return fechaLocal(siguiente) === fecha ? horaLocal(siguiente) : "23:45";
 }
