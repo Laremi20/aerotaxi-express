@@ -1,4 +1,5 @@
-// Traducción de los códigos SQLSTATE al asignar o cancelar un viaje (HU05; CU08, CU09; RN-08 a RN-11).
+// Traducción de los códigos SQLSTATE al asignar, cancelar, iniciar o completar un viaje
+// (HU05, HU06; CU08, CU09, CU13; RN-08 a RN-12).
 // Solo se usa el código: nunca se muestra el mensaje de Supabase (nombres de tablas o restricciones).
 
 export const MENSAJES_ASIGNACION = {
@@ -18,6 +19,22 @@ export const MENSAJES_CANCELACION = {
   transicion: "Solo se puede cancelar un viaje en estado ASIGNADO.",
   sinPermiso: "No puedes cancelar este viaje.",
   generico: "No fue posible cancelar el viaje; inténtalo de nuevo.",
+};
+
+// Errores de fn_cambiar_estado_viaje al iniciar o completar (CU13; RN-11, RN-12; migración 20261103)
+export const MENSAJES_CAMBIO_ESTADO = {
+  // ATX01: guarda de 30 min antes de la franja (§3.4.1)
+  muyTemprano: "Aún no puedes iniciar este viaje: se habilita 30 minutos antes de su hora de inicio.",
+  // ATX02 (RPC) o P0001 (trigger de transiciones): el viaje ya no está en el estado esperado
+  cambioEstado: "Este viaje cambió de estado (por ejemplo, fue cancelado). Recarga la lista.",
+  // P0002: no existe o es de otro conductor
+  noDisponible: "Este viaje ya no está disponible.",
+  // 23514: km_reales > 0 (RN-12)
+  kmPositivos: "Los km reales deben ser mayores que 0.",
+  // 22003: fuera de numeric(6,2)
+  kmAltos: "Los km reales son demasiado altos; revisa el valor.",
+  sinPermiso: "No puedes cambiar el estado de este viaje.",
+  generico: "No fue posible actualizar el viaje; inténtalo de nuevo.",
 };
 
 export function mensajeErrorAsignacion(codigo: string | null | undefined): string {
@@ -43,5 +60,25 @@ export function mensajeErrorCancelacion(codigo: string | null | undefined): stri
       return MENSAJES_CANCELACION.sinPermiso;
     default:
       return MENSAJES_CANCELACION.generico;
+  }
+}
+
+export function mensajeErrorCambioEstado(codigo: string | null | undefined): string {
+  switch (codigo) {
+    case "ATX01":
+      return MENSAJES_CAMBIO_ESTADO.muyTemprano;
+    case "ATX02":
+    case "P0001":
+      return MENSAJES_CAMBIO_ESTADO.cambioEstado;
+    case "P0002":
+      return MENSAJES_CAMBIO_ESTADO.noDisponible;
+    case "23514":
+      return MENSAJES_CAMBIO_ESTADO.kmPositivos;
+    case "22003":
+      return MENSAJES_CAMBIO_ESTADO.kmAltos;
+    case "42501":
+      return MENSAJES_CAMBIO_ESTADO.sinPermiso;
+    default:
+      return MENSAJES_CAMBIO_ESTADO.generico;
   }
 }
