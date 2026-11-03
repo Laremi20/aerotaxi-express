@@ -1,12 +1,13 @@
 -- =============================================================================
--- Verificación manual de 20261102_modelo_multiflota.sql + seed.sql.
--- Cubre: CP-10, CP-11 (HU05), CP-16, CP-17, CP-18 (HU08); RN-06, RN-09, RN-10,
---        RN-11, RN-12, RN-13.
--- Aplicación: pegar completo en el SQL Editor después del seed.
+-- Verificación manual de 20261102_modelo_multiflota.sql + 20261103_estado_conductor.sql + seed.sql.
+-- Cubre: CP-10, CP-11 (HU05), HU06 (estado del conductor), CP-16, CP-17, CP-18 (HU08);
+--        CU12, CU13; RN-06, RN-09, RN-10, RN-11, RN-12, RN-13.
+-- Aplicación: pegar completo en el SQL Editor después de ambas migraciones y del seed.
 -- No deja datos: todo lo que crea se revierte al final.
 -- Resultado: una fila por caso; la columna «ok» debe ser true en todas.
 -- Códigos: OK = sin error; 23P01 = exclusión; 23505 = única; 23514 = check;
---          42501 = sin permiso o rechazado por RLS; P0001/P0002 = error de función.
+--          42501 = sin permiso o rechazado por RLS; P0001/P0002 = error de función;
+--          ATX01 = viaje aún no iniciable (30 min); ATX02 = transición no permitida (RPC).
 -- =============================================================================
 
 -- Ejecuta una sentencia y devuelve 'OK' o el SQLSTATE del error (sin abortar)
@@ -56,6 +57,7 @@ declare
   v_v2     bigint;   -- conductor 2, mañana (se cancela)
   v_v3     bigint;   -- conductor 1, empieza en 10 min (para la RPC)
   v_v4     bigint;   -- conductor 2, ACTIVO
+  v_v5     bigint;   -- conductor 1, ACTIVO desde hace 90 min (otro viaje en curso)
   v_ini    timestamptz := date_trunc('hour', now()) + interval '1 day';
   v_id     bigint;
   v_txt    text;
@@ -70,7 +72,7 @@ begin
     end if;
 
     -- Preparación (rol original, sin RLS)
-    for i in 1..8 loop
+    for i in 1..9 loop
       insert into public.cotizacion (flota_id, tarifa_id, creado_por, destino_texto, distancia_km,
         metodo_calculo, tarifa_calculada, estado, iniciada_at, confirmada_at)
       values (v_flota, v_tarifa, v_admin, 'Destino de prueba ' || i, 20, 'HAVERSINE', 22000 + i * 100,
@@ -131,6 +133,14 @@ begin
     values (v_cot[8], v_flota, v_c2, now() + interval '5 minutes', now() + interval '35 minutes', 22000, v_admin)
     returning viaje_id into v_v4;
     update public.viaje set estado = 'ACTIVO' where viaje_id = v_v4;
+    res := res || array[['HU06 viaje ACTIVO deja al conductor EN_VIAJE', 'EN_VIAJE',
+      (select estado_disponibilidad from public.conductor where driver_id = v_c2)]];
+
+    -- Viaje ACTIVO del conductor 1 que empezó hace 90 min (no se cruza con v_v3)
+    insert into public.viaje (cotizacion_id, flota_id, driver_id, franja_inicio, franja_fin, tarifa, asignado_por)
+    values (v_cot[9], v_flota, v_c1, now() - interval '90 minutes', now() - interval '30 minutes', 22000, v_admin)
+    returning viaje_id into v_v5;
+    update public.viaje set estado = 'ACTIVO' where viaje_id = v_v5;
 
     insert into public.flota (nombre, admin_id) values ('Flota ajena', v_c3) returning flota_id into v_flota_b;
     insert into public.tarifa (flota_id, nombre, tarifa_base, valor_km, vigente_desde)
@@ -159,14 +169,34 @@ begin
     perform pg_temp.probar(format('update public.viaje set estado = %L where viaje_id = %s', 'ACTIVO', v_v3));
     res := res || array[['UPDATE directo del conductor no cambia el viaje', 'ASIGNADO',
       (select estado from public.viaje where viaje_id = v_v3)]];
-    res := res || array[['RPC: iniciar viaje de mañana (guarda 30 min)', 'P0001',
+    res := res || array[['RPC: iniciar viaje de mañana (guarda 30 min)', 'ATX01',
       pg_temp.probar(format('select public.fn_cambiar_estado_viaje(%s, %L)', v_v1, 'ACTIVO'))]];
+    res := res || array[['RN-11 RPC: completar viaje ASIGNADO', 'ATX02',
+      pg_temp.probar(format('select public.fn_cambiar_estado_viaje(%s, %L, 10)', v_v1, 'COMPLETADO'))]];
     res := res || array[['RPC: iniciar viaje propio', 'OK',
+      pg_temp.probar(format('select public.fn_cambiar_estado_viaje(%s, %L)', v_v3, 'ACTIVO'))]];
+    res := res || array[['HU06 al iniciar, el conductor queda EN_VIAJE', 'EN_VIAJE',
+      (select estado_disponibilidad from public.conductor where driver_id = v_c1)]];
+    res := res || array[['RN-11 RPC: iniciar dos veces el mismo viaje', 'ATX02',
       pg_temp.probar(format('select public.fn_cambiar_estado_viaje(%s, %L)', v_v3, 'ACTIVO'))]];
     res := res || array[['RN-12 RPC: completar sin km reales', '23514',
       pg_temp.probar(format('select public.fn_cambiar_estado_viaje(%s, %L)', v_v3, 'COMPLETADO'))]];
     res := res || array[['RPC: completar con km reales', 'OK',
       pg_temp.probar(format('select public.fn_cambiar_estado_viaje(%s, %L, 12.5)', v_v3, 'COMPLETADO'))]];
+    res := res || array[['HU06 con otro viaje ACTIVO, el conductor sigue EN_VIAJE', 'EN_VIAJE',
+      (select estado_disponibilidad from public.conductor where driver_id = v_c1)]];
+    res := res || array[['RN-11 RPC: completar de nuevo un viaje COMPLETADO', 'ATX02',
+      pg_temp.probar(format('select public.fn_cambiar_estado_viaje(%s, %L, 99)', v_v3, 'COMPLETADO'))]];
+    res := res || array[['RN-12 los km del viaje completado no cambian', '12.50',
+      (select km_reales::text from public.viaje where viaje_id = v_v3)]];
+    res := res || array[['RPC: completar el último viaje ACTIVO', 'OK',
+      pg_temp.probar(format('select public.fn_cambiar_estado_viaje(%s, %L, 30)', v_v5, 'COMPLETADO'))]];
+    res := res || array[['HU06 sin viajes en curso, el conductor queda DISPONIBLE', 'DISPONIBLE',
+      (select estado_disponibilidad from public.conductor where driver_id = v_c1)]];
+    perform pg_temp.probar(format('update public.conductor set estado_disponibilidad = %L where driver_id = %L',
+                                  'FUERA_DE_TURNO', v_c1));
+    res := res || array[['HU08 conductor no cambia su disponibilidad directamente', 'DISPONIBLE',
+      (select estado_disponibilidad from public.conductor where driver_id = v_c1)]];
     res := res || array[['RPC: viaje de otro conductor', 'P0002',
       pg_temp.probar(format('select public.fn_cambiar_estado_viaje(%s, %L)', v_v2, 'ACTIVO'))]];
     res := res || array[['Conductor no puede borrar viajes', '42501',
