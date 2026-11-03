@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -15,6 +15,11 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "AeroTaxi Express",
   description: "Central de despacho digital para taxistas del Aeropuerto SCL",
+};
+
+// <meta name="color-scheme" content="light">: el navegador no aplica su tema oscuro antes de cargar el CSS
+export const viewport: Viewport = {
+  colorScheme: "light",
 };
 
 export default function RootLayout({
