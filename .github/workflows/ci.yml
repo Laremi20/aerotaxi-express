@@ -1,0 +1,60 @@
+# Integración continua (Informe U2: Tabla 55, Tabla 91 y definición de terminado; HU09).
+# Cada Pull Request y cada push a master pasan por lint, tipos, pruebas, build y verificación SQL.
+# Sin secretos: el build usa variables públicas ficticias y la verificación SQL corre en PGlite.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    name: CI
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      # Valores ficticios: nunca se conectan a nada durante la CI
+      NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-ficticia
+      APP_ENV: ci
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - name: Obtener el código
+        uses: actions/checkout@v5
+
+      - name: Node 22 LTS con caché de npm
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      # Informativo: muestra avisos nuevos sin bloquear el PR (Tabla 89, RT7)
+      - name: Auditoría de dependencias (informativa)
+        run: npm audit --audit-level=high
+        continue-on-error: true
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Tipos
+        run: npm run typecheck
+
+      - name: Pruebas unitarias
+        run: npm run test
+
+      - name: Build
+        run: npm run build
+
+      - name: Verificación SQL (PGlite)
+        run: npm run verificar:sql

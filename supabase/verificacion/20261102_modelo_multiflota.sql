@@ -1,8 +1,10 @@
 -- =============================================================================
--- Verificación manual de 20261102_modelo_multiflota.sql + 20261103_estado_conductor.sql + seed.sql.
+-- Verificación de 20261102_modelo_multiflota.sql + 20261103_estado_conductor.sql +
+-- 20261123_fn_salud.sql + seed.sql.
 -- Cubre: CP-10, CP-11 (HU05), HU06 (estado del conductor), CP-16, CP-17, CP-18 (HU08);
---        CU12, CU13; RN-06, RN-09, RN-10, RN-11, RN-12, RN-13.
--- Aplicación: pegar completo en el SQL Editor después de ambas migraciones y del seed.
+--        CP-19 (HU09, fn_salud); CU12, CU13; RN-06, RN-09, RN-10, RN-11, RN-12, RN-13.
+-- Aplicación: pegar completo en el SQL Editor después de las migraciones y del seed,
+-- o `npm run verificar:sql` (PGlite, también en la CI).
 -- No deja datos: todo lo que crea se revierte al final.
 -- Resultado: una fila por caso; la columna «ok» debe ser true en todas.
 -- Códigos: OK = sin error; 23P01 = exclusión; 23505 = única; 23514 = check;
@@ -290,6 +292,12 @@ begin
       pg_temp.probar('select count(*) from public.flota')]];
     res := res || array[['CP-18 anónimo no ejecuta la RPC', '42501',
       pg_temp.probar(format('select public.fn_cambiar_estado_viaje(%s, %L)', v_v1, 'ACTIVO'))]];
+
+    -- Health check (HU09; CP-19): la única función que anon puede ejecutar
+    res := res || array[['HU09 anónimo ejecuta fn_salud', 'OK',
+      pg_temp.probar('select public.fn_salud()')]];
+    res := res || array[['HU09 fn_salud no es security definer', 'false',
+      (select prosecdef::text from pg_proc where oid = 'public.fn_salud()'::regprocedure)]];
 
     -- Revierte todo lo anterior (datos y cambio de rol)
     raise exception using errcode = 'ZT999';
