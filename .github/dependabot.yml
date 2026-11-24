@@ -1,0 +1,26 @@
+# Actualizaciones semanales de dependencias (Informe U2: RT7, Tabla 89; OWASP A03:2025).
+# Cada PR de Dependabot pasa por la CI antes de fusionarse en master.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      timezone: America/Santiago
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: chore(deps)
+    # Menores y parches en un solo PR; las versiones mayores llegan por separado para revisarlas
+    groups:
+      menores-y-parches:
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      timezone: America/Santiago
+    commit-message:
+      prefix: ci
