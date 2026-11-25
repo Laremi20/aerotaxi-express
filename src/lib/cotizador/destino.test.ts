@@ -11,7 +11,7 @@ import {
   textoPuntoEnMapa,
 } from "./destino";
 
-const COSTANERA = { lat: -33.4175, lng: -70.6062, texto: "Costanera Center, Providencia" };
+const COSTANERA = { lat: -33.4175, lng: -70.6062, texto: "Costanera Center, Providencia", placeId: null };
 
 describe("redondearCoordenada", () => {
   it("deja 6 decimales, como numeric(9,6)", () => {

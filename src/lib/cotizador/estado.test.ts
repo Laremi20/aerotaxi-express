@@ -12,7 +12,7 @@ import type { DatosCotizacion } from "./respuesta";
 
 const T0 = "2026-11-04T17:58:30.000Z";
 const T1 = "2026-11-04T17:59:10.000Z";
-const COSTANERA = destinoDesdeBusqueda({ lat: -33.4175, lng: -70.6062, texto: "Costanera Center" });
+const COSTANERA = destinoDesdeBusqueda({ lat: -33.4175, lng: -70.6062, texto: "Costanera Center", placeId: null });
 
 const datos = (cotizacion_id: number, monto: number): DatosCotizacion => ({
   cotizacion_id,

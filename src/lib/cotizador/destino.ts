@@ -22,7 +22,7 @@ export interface Destino extends Coordenada {
 
 export interface ResultadoBusqueda extends Coordenada {
   texto: string;
-  placeId?: string | null;
+  placeId: string | null;
 }
 
 // cotizacion.destino_lat/lng son numeric(9,6)
@@ -62,7 +62,7 @@ export function destinoDesdeBusqueda(resultado: ResultadoBusqueda): Destino {
     ...coordenadas(resultado),
     texto,
     textoElegido: texto,
-    placeId: resultado.placeId ?? null,
+    placeId: resultado.placeId,
     fuente: "busqueda",
   };
 }
