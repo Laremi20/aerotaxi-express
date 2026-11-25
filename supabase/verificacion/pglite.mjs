@@ -49,6 +49,8 @@ const SIMULACION_SUPABASE = `
     )::uuid
   $$;
 
+  -- Supabase crea esta publicación vacía en cada proyecto; las migraciones le agregan tablas
+  create publication supabase_realtime;
   grant usage on schema public, auth, extensions to anon, authenticated, service_role;
   grant execute on function auth.uid() to anon, authenticated, service_role;
 
