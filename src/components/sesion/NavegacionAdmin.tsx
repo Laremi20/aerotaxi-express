@@ -1,12 +1,13 @@
 "use client";
 
-// Navegación del Taxista Administrador entre Cotizar y el Calendario Maestro (HU05; CU05 → CU08)
+// Navegación del Taxista Administrador: Cotizar, Calendario Maestro e Historial (HU05, HU07; CU05 → CU08, CU10)
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const SECCIONES = [
   { href: "/cotizar", texto: "Cotizar" },
   { href: "/calendario", texto: "Calendario" },
+  { href: "/historial", texto: "Historial" },
 ];
 
 export default function NavegacionAdmin() {
