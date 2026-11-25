@@ -1,13 +1,17 @@
 "use client";
 
-// Calendario Maestro del Taxista Administrador (HU05; CU08, CU09). Reúne la cotización, el conductor y
-// la hora elegidos desde la lista, la agenda o el formulario. Los datos llegan del servidor con RLS y se
-// vuelven a leer tras cada asignación o cancelación (revalidatePath en las Server Actions).
+// Calendario Maestro del Taxista Administrador (HU05, HU06; CU07, CU08, CU09). Reúne la cotización, el
+// conductor y la hora elegidos desde la lista, la agenda o el formulario. Los datos llegan del servidor con
+// RLS y se vuelven a leer tras cada asignación o cancelación (revalidatePath en las Server Actions) y ante
+// cada cambio que llega por Supabase Realtime (CP-13: ≤ 3 s), también de otros administradores o del conductor.
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { IconoAlerta, IconoCheck } from "@/components/iconos";
+import AvisoConexion from "@/components/tiempo-real/AvisoConexion";
 import { duracionSugerida } from "@/lib/calendario/duracion";
 import { describirFranja } from "@/lib/calendario/franja";
+import { aplicarDisponibilidad, leerCambioConductor, type EstadoDisponibilidad } from "@/lib/tiempo-real/estado";
+import { useCanalTiempoReal, useRecargaDiferida, type SuscripcionTabla } from "@/lib/tiempo-real/useCanalTiempoReal";
 import AgendaDia from "./AgendaDia";
 import DetalleViaje from "./DetalleViaje";
 import FormularioAsignacion from "./FormularioAsignacion";
@@ -16,6 +20,8 @@ import SelectorDia, { hrefDia } from "./SelectorDia";
 import type { ConductorAgenda, CotizacionPendiente, DiaAgenda, ViajeAgenda } from "./tipos";
 
 interface Props {
+  // Flota del administrador: filtra los eventos de Realtime (RLS vuelve a filtrarlos en el servidor)
+  flotaId: string;
   dia: DiaAgenda;
   hoy: string;
   ahora: string;
@@ -29,17 +35,51 @@ interface Props {
 }
 
 export default function Calendario({
+  flotaId,
   dia,
   hoy,
   ahora,
   horaInicial,
-  conductores,
+  conductores: conductoresServidor,
   pendientes,
   viajes,
   cotizacionInicial,
   aviso,
 }: Props) {
   const router = useRouter();
+
+  // HU06 (CU07 paso 3): la disponibilidad recibida por Realtime se aplica al instante sobre la lista del
+  // servidor; cuando llega una lista nueva (router.refresh), esa manda y los cambios locales se descartan.
+  const [base, setBase] = useState(conductoresServidor);
+  const [cambiosDisponibilidad, setCambiosDisponibilidad] = useState<Record<string, EstadoDisponibilidad>>({});
+  if (base !== conductoresServidor) {
+    setBase(conductoresServidor);
+    setCambiosDisponibilidad({});
+  }
+  const conductores = aplicarDisponibilidad(conductoresServidor, cambiosDisponibilidad);
+
+  const recargar = useRecargaDiferida(() => router.refresh());
+  const alCambiar = useCallback(
+    (tabla: SuscripcionTabla["tabla"], payload: unknown) => {
+      if (tabla === "conductor") {
+        const cambio = leerCambioConductor(payload);
+        if (cambio) setCambiosDisponibilidad((previos) => ({ ...previos, [cambio.driver_id]: cambio.estado_disponibilidad }));
+      }
+      // Agenda, pendientes y altas o bajas de conductores: se vuelven a leer del servidor con RLS
+      recargar();
+    },
+    [recargar]
+  );
+  const conexion = useCanalTiempoReal({
+    prefijo: `calendario:${flotaId}`,
+    suscripciones: [
+      { tabla: "conductor", evento: "*", filtro: `flota_id=eq.${flotaId}` },
+      { tabla: "viaje", evento: "*", filtro: `flota_id=eq.${flotaId}` },
+    ],
+    onCambio: alCambiar,
+    // CU07 2a: al reconectar se recarga lo que pudo cambiar durante el corte
+    onReconectar: recargar,
+  });
   const pendienteInicial = pendientes.find((q) => q.cotizacion_id === cotizacionInicial) ?? null;
 
   const [cotizacionId, setCotizacionId] = useState<number | null>(pendienteInicial?.cotizacion_id ?? null);
@@ -97,6 +137,8 @@ export default function Calendario({
   return (
     <div className="flex flex-col gap-4">
       <SelectorDia fecha={dia.fecha} hoy={hoy} cotizacionId={cotizacion?.cotizacion_id ?? null} />
+
+      <AvisoConexion conexion={conexion} />
 
       {aviso && (
         <p role="status" className="flex items-start gap-2 rounded-xl bg-amber-50 p-3 font-semibold text-amber-900">

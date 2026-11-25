@@ -1,0 +1,118 @@
+"use client";
+
+// Suscripción a postgres_changes de Supabase Realtime (HU06; CU07, CU12; CP-13).
+// - Usa el cliente de navegador: la sesión viaja en cookies y supabase-js entrega el JWT a Realtime,
+//   así Realtime solo envía las filas que el usuario puede leer por RLS.
+// - Un canal con nombre único por montaje: channel() reutiliza un canal con el mismo nombre, y el
+//   doble montaje del modo estricto de React podría recibir uno que se está cerrando.
+// - CU07 2a: ante un error o un corte de red, informa «sin conexión», rehace la suscripción con
+//   espera creciente y, al volver, avisa con onReconectar para recargar el estado perdido.
+import { useCallback, useEffect, useRef, useState } from "react";
+import { crearClienteNavegador } from "@/lib/supabase/navegador";
+import { esperaReintento, estadoConexion, type Conexion } from "./estado";
+
+export interface SuscripcionTabla {
+  tabla: "conductor" | "viaje";
+  evento: "INSERT" | "UPDATE" | "*";
+  // Filtro de postgres_changes, p. ej. "flota_id=eq.<uuid>" (RLS sigue aplicando)
+  filtro: string;
+}
+
+interface Opciones {
+  prefijo: string;
+  suscripciones: readonly SuscripcionTabla[];
+  onCambio: (tabla: SuscripcionTabla["tabla"], payload: unknown) => void;
+  onReconectar: () => void;
+}
+
+const idUnico = () =>
+  typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+export function useCanalTiempoReal({ prefijo, suscripciones, onCambio, onReconectar }: Opciones): Conexion {
+  const [conexion, setConexion] = useState<Conexion>("conectando");
+  // Cada valor de intento crea un canal nuevo
+  const [intento, setIntento] = useState(0);
+  const fallidos = useRef(0);
+  const huboCaida = useRef(false);
+  // Siempre la última versión de los callbacks, sin volver a suscribirse
+  const callbacks = useRef({ onCambio, onReconectar });
+  useEffect(() => {
+    callbacks.current = { onCambio, onReconectar };
+  });
+
+  const clave = JSON.stringify(suscripciones);
+
+  useEffect(() => {
+    const lista: SuscripcionTabla[] = JSON.parse(clave);
+    const supabase = crearClienteNavegador();
+    const canal = supabase.channel(`${prefijo}:${idUnico()}`);
+    let reintento: ReturnType<typeof setTimeout> | undefined;
+    // removeChannel informa CLOSED: no es una caída y no debe programar otro intento
+    let cerrado = false;
+
+    for (const s of lista) {
+      canal.on(
+        "postgres_changes",
+        { event: s.evento, schema: "public", table: s.tabla, filter: s.filtro },
+        (payload) => callbacks.current.onCambio(s.tabla, payload)
+      );
+    }
+
+    canal.subscribe((status) => {
+      if (cerrado) return;
+      const nuevo = estadoConexion(status);
+      if (nuevo === "conectado") {
+        fallidos.current = 0;
+        setConexion("conectado");
+        if (huboCaida.current) {
+          huboCaida.current = false;
+          callbacks.current.onReconectar();
+        }
+      } else if (nuevo === "sin_conexion") {
+        huboCaida.current = true;
+        setConexion("sin_conexion");
+        clearTimeout(reintento);
+        reintento = setTimeout(() => setIntento((n) => n + 1), esperaReintento(fallidos.current++));
+      }
+    });
+
+    return () => {
+      cerrado = true;
+      clearTimeout(reintento);
+      void supabase.removeChannel(canal);
+    };
+  }, [prefijo, clave, intento]);
+
+  // El navegador avisa antes que el socket cuando se corta la red
+  useEffect(() => {
+    const alDesconectar = () => {
+      huboCaida.current = true;
+      setConexion("sin_conexion");
+    };
+    const alConectar = () => setIntento((n) => n + 1);
+    window.addEventListener("offline", alDesconectar);
+    window.addEventListener("online", alConectar);
+    return () => {
+      window.removeEventListener("offline", alDesconectar);
+      window.removeEventListener("online", alConectar);
+    };
+  }, []);
+
+  return conexion;
+}
+
+// Agrupa varias señales en una sola recarga del Server Component (router.refresh)
+export function useRecargaDiferida(recargar: () => void, esperaMs = 300): () => void {
+  const temporizador = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const ultima = useRef(recargar);
+  useEffect(() => {
+    ultima.current = recargar;
+  });
+  useEffect(() => () => clearTimeout(temporizador.current), []);
+  return useCallback(() => {
+    clearTimeout(temporizador.current);
+    temporizador.current = setTimeout(() => ultima.current(), esperaMs);
+  }, [esperaMs]);
+}

@@ -4,8 +4,8 @@
 // La línea de tiempo usa la duración real del día (23, 24 o 25 h con el cambio de horario).
 import { useEffect, useMemo, useRef } from "react";
 import { describirFranja, horaSugeridaDesdeClic, marcasDelDia, posicionEnDia } from "@/lib/calendario/franja";
+import InsigniaDisponibilidad from "./InsigniaDisponibilidad";
 import {
-  ETIQUETA_DISPONIBILIDAD,
   ETIQUETA_VIAJE,
   type ConductorAgenda,
   type DiaAgenda,
@@ -109,10 +109,13 @@ export default function AgendaDia({
                 const elegido = c.driver_id === conductorElegido;
                 return (
                   <li key={c.driver_id} className="flex flex-col gap-1">
-                    <p className="sticky left-0 w-fit text-sm text-slate-800">
-                      <span className="font-semibold">{c.nombre}</span> · {c.patente} ·{" "}
-                      {ETIQUETA_DISPONIBILIDAD[c.estado_disponibilidad]}
-                      {elegido && <span className="ml-2 font-semibold text-blue-800">(elegido)</span>}
+                    <p className="sticky left-0 flex w-fit flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-800">
+                      <span>
+                        <span className="font-semibold">{c.nombre}</span> · {c.patente}
+                      </span>
+                      {/* HU06: se actualiza por Realtime sin recargar */}
+                      <InsigniaDisponibilidad estado={c.estado_disponibilidad} />
+                      {elegido && <span className="font-semibold text-blue-800">(elegido)</span>}
                     </p>
                     <div
                       className={`relative h-12 rounded-lg bg-slate-100 ${elegido ? "ring-2 ring-blue-700" : ""}`}
