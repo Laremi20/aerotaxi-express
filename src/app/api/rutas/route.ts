@@ -1,6 +1,6 @@
 // POST /api/rutas: cotización con ruta y tarifa (HU03; CU03, CU04; RN-01, RN-02, RN-04, RN-05, RN-06, RN-15).
 // La autorización final está en RLS: todas las lecturas y el INSERT usan el JWT del administrador.
-import { calcularRutaConRespaldo, PROVEEDOR_PRINCIPAL, proveedorHaversine } from "@/lib/rutas";
+import { calcularRutaConRespaldo, codigoDeFalla, obtenerProveedorPrincipal, proveedorHaversine } from "@/lib/rutas";
 import { validarSolicitudRuta } from "@/lib/rutas/solicitud";
 import { crearClienteServidor } from "@/lib/supabase/servidor";
 import { dentroDeCobertura, ORIGEN_SCL } from "@/lib/tarifa/geo";
@@ -79,13 +79,15 @@ export async function POST(request: Request) {
       return responderError(422, MENSAJES.fueraDeCobertura);
     }
 
-    // RN-01 origen SCL; RN-05 respaldo Haversine si el proveedor principal falla o tarda
+    // RN-01 origen SCL; RN-05 respaldo Haversine si Routes API falla, tarda o no hay llave de servidor.
+    // Solo se registra el código de la falla (KPI-06), nunca el mensaje del proveedor.
     const ruta = await calcularRutaConRespaldo(
       { origen: ORIGEN_SCL, destino: coordenadas, coefSinuosidad: Number(tarifa.coef_sinuosidad) },
       {
-        principal: PROVEEDOR_PRINCIPAL,
+        principal: obtenerProveedorPrincipal(),
         respaldo: proveedorHaversine,
-        alFallar: (motivo) => console.warn("[api/rutas] se usa el respaldo Haversine:", motivo),
+        alFallar: (motivo) =>
+          console.error("[api/rutas] Routes API falló; se usa el respaldo Haversine:", codigoDeFalla(motivo)),
       }
     );
 

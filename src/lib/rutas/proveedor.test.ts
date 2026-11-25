@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { haversineKm, ORIGEN_SCL } from "@/lib/tarifa/geo";
 import { proveedorHaversine } from "./haversine";
-import { calcularRutaConRespaldo, type ProveedorRutas, type Ruta, type SolicitudRuta } from "./proveedor";
+import {
+  calcularRutaConRespaldo,
+  codigoDeFalla,
+  ErrorProveedorRutas,
+  type ProveedorRutas,
+  type Ruta,
+  type SolicitudRuta,
+} from "./proveedor";
 
 const SOLICITUD: SolicitudRuta = {
   origen: ORIGEN_SCL,
@@ -67,5 +74,24 @@ describe("calcularRutaConRespaldo", () => {
     });
     expect(ruta.metodo).toBe("HAVERSINE");
     expect(senal?.aborted).toBe(true);
+  });
+
+  it("informa TIEMPO_AGOTADO al agotarse el tiempo", async () => {
+    const motivos: unknown[] = [];
+    const principal: ProveedorRutas = { calcular: () => new Promise<Ruta>(() => {}) };
+    await calcularRutaConRespaldo(SOLICITUD, {
+      principal,
+      respaldo: proveedorHaversine,
+      tiempoMaximoMs: 20,
+      alFallar: (motivo) => motivos.push(motivo),
+    });
+    expect(motivos.map(codigoDeFalla)).toEqual(["TIEMPO_AGOTADO"]);
+  });
+});
+
+describe("codigoDeFalla", () => {
+  it("devuelve el código de un ErrorProveedorRutas y DESCONOCIDO en otro caso", () => {
+    expect(codigoDeFalla(new ErrorProveedorRutas("HTTP_429"))).toBe("HTTP_429");
+    expect(codigoDeFalla(new Error("x"))).toBe("DESCONOCIDO");
   });
 });
