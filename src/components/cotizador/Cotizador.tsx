@@ -2,10 +2,20 @@
 
 // Cotizador del Taxista Administrador (HU01, HU02, HU03; CU01, CU02, CU05; KPI-01).
 // Nada se calcula en el navegador: cada destino o cambio de recargos pide una cotización a /api/rutas.
-import dynamic from "next/dynamic";
-import { useCallback, useEffect, useReducer, useRef } from "react";
+// Mapa y sugerencias con Google Maps Platform; si no están disponibles (sin llave o dominio no autorizado,
+// como en los Preview de Vercel), el destino se ingresa por coordenadas y la cotización sigue igual.
+import { APIProvider, useApiLoadingStatus } from "@vis.gl/react-google-maps";
+import { useCallback, useEffect, useReducer, useRef, useState } from "react";
+import { IconoAlerta } from "@/components/iconos";
+import MapaCotizador from "@/components/mapa/MapaCotizador";
 import { confirmarCotizacion, descartarCotizacion, type ResultadoCierre } from "@/lib/cotizacion/acciones";
-import { destinoDesdeArrastre, destinoDesdeBusqueda, destinoDesdeClic, type ResultadoBusqueda } from "@/lib/cotizador/destino";
+import {
+  destinoDesdeArrastre,
+  destinoDesdeBusqueda,
+  destinoDesdeClic,
+  destinoDesdeCoordenadas,
+  type ResultadoBusqueda,
+} from "@/lib/cotizador/destino";
 import {
   cuerpoSolicitud,
   ESTADO_INICIAL,
@@ -17,17 +27,40 @@ import { interpretarRespuestaRutas, type ResultadoRutas } from "@/lib/cotizador/
 import type { Coordenada } from "@/lib/tarifa/geo";
 import type { MontosRecargo, Recargo } from "@/lib/tarifa/monto";
 import BuscadorDestino from "./BuscadorDestino";
+import IngresoCoordenadas from "./IngresoCoordenadas";
 import PanelCotizacion from "./PanelCotizacion";
 import SelectorRecargos from "./SelectorRecargos";
 
-const MapaCotizador = dynamic(() => import("@/components/mapa/MapaCotizador"), {
-  ssr: false,
-  loading: () => (
-    <div className="flex h-[50vh] min-h-72 w-full items-center justify-center bg-slate-100 text-sm text-slate-600 lg:h-[70vh]">
-      Cargando mapa…
-    </div>
-  ),
-});
+// Públicas: la llave de navegador está restringida por dominio y API (Tabla 19)
+const LLAVE_NAVEGADOR = process.env.NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY ?? "";
+const MAP_ID = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID ?? "";
+const GOOGLE_CONFIGURADO = LLAVE_NAVEGADOR.length > 0 && MAP_ID.length > 0;
+
+type EstadoGoogle = "cargando" | "disponible" | "no_disponible";
+
+// Google llama a window.gm_authFailure si la llave no está autorizada para el dominio (p. ej., un Preview)
+function useEstadoGoogle(): EstadoGoogle {
+  const carga = useApiLoadingStatus();
+  const [fallaAutorizacion, setFallaAutorizacion] = useState(false);
+
+  useEffect(() => {
+    if (!GOOGLE_CONFIGURADO) return;
+    const ventana = window as Window & { gm_authFailure?: () => void };
+    const anterior = ventana.gm_authFailure;
+    ventana.gm_authFailure = () => {
+      console.warn("[cotizar] la llave de Google Maps no está autorizada en este dominio");
+      setFallaAutorizacion(true);
+    };
+    return () => {
+      ventana.gm_authFailure = anterior;
+    };
+  }, []);
+
+  if (!GOOGLE_CONFIGURADO || fallaAutorizacion || carga === "FAILED" || carga === "AUTH_FAILURE") {
+    return "no_disponible";
+  }
+  return carga === "LOADED" ? "disponible" : "cargando";
+}
 
 const MENSAJE_SIN_CONEXION = "No es posible cotizar; revisa tu conexión.";
 const MENSAJE_GUARDADO_SIN_CONEXION = "No fue posible guardar la cotización; revisa tu conexión.";
@@ -55,7 +88,17 @@ interface Props {
   montosRecargo: MontosRecargo;
 }
 
-export default function Cotizador({ montosRecargo }: Props) {
+export default function Cotizador(props: Props) {
+  if (!GOOGLE_CONFIGURADO) return <ContenidoCotizador {...props} />;
+  return (
+    <APIProvider apiKey={LLAVE_NAVEGADOR} language="es" region="CL" onError={() => console.warn("[cotizar] no cargó Google Maps")}>
+      <ContenidoCotizador {...props} />
+    </APIProvider>
+  );
+}
+
+function ContenidoCotizador({ montosRecargo }: Props) {
+  const estadoGoogle = useEstadoGoogle();
   const [estado, despachar] = useReducer(reducirCotizador, ESTADO_INICIAL);
   // Evita enviar dos veces la misma solicitud si el efecto se repite
   const secuenciaEnviada = useRef(0);
@@ -107,6 +150,12 @@ export default function Cotizador({ montosRecargo }: Props) {
     []
   );
 
+  const fijarCoordenadas = useCallback(
+    (punto: Coordenada) =>
+      despachar({ type: "DESTINO_FIJADO", destino: destinoDesdeCoordenadas(punto), ahora: ahora() }),
+    []
+  );
+
   const destinoActual = estado.destino;
   const soltarPin = useCallback(
     (punto: Coordenada) =>
@@ -139,11 +188,23 @@ export default function Cotizador({ montosRecargo }: Props) {
   };
 
   const guardando = estado.fase === "guardando";
+  const sinGoogle = estadoGoogle === "no_disponible";
 
   return (
     <div className="grid gap-4 lg:grid-cols-[3fr_2fr] lg:items-start">
-      <div className="lg:col-start-2 lg:row-start-1">
-        <BuscadorDestino deshabilitado={guardando} onInteraccion={registrarInteraccion} onElegir={elegirResultado} />
+      <div className="flex flex-col gap-3 lg:col-start-2 lg:row-start-1">
+        {sinGoogle ? (
+          <>
+            <p className="flex items-start gap-2 rounded-xl bg-amber-50 p-3 text-sm font-semibold text-amber-900">
+              <IconoAlerta className="mt-0.5 size-5 shrink-0" />
+              El mapa de Google no está disponible en este ambiente. Ingresa las coordenadas del destino; la
+              cotización se calcula igual.
+            </p>
+            <IngresoCoordenadas deshabilitado={guardando} onInteraccion={registrarInteraccion} onFijar={fijarCoordenadas} />
+          </>
+        ) : (
+          <BuscadorDestino deshabilitado={guardando} onInteraccion={registrarInteraccion} onElegir={elegirResultado} />
+        )}
       </div>
 
       <div
@@ -151,15 +212,26 @@ export default function Cotizador({ montosRecargo }: Props) {
         aria-label="Mapa: toca para fijar el destino o arrastra el pin para ajustarlo"
         className="relative z-0 overflow-hidden rounded-2xl border border-slate-200 lg:col-start-1 lg:row-span-2 lg:row-start-1"
       >
-        <MapaCotizador
-          destino={estado.destino}
-          fueraDeCobertura={estado.fueraDeCobertura}
-          bloqueado={guardando}
-          mostrarLineaDirecta={!estado.cotizacion?.polyline}
-          onInteraccion={registrarInteraccion}
-          onClic={marcarEnMapa}
-          onArrastre={soltarPin}
-        />
+        {estadoGoogle === "disponible" ? (
+          <MapaCotizador
+            mapId={MAP_ID}
+            destino={estado.destino}
+            fueraDeCobertura={estado.fueraDeCobertura}
+            bloqueado={guardando}
+            polyline={estado.cotizacion?.polyline ?? null}
+            onInteraccion={registrarInteraccion}
+            onClic={marcarEnMapa}
+            onArrastre={soltarPin}
+          />
+        ) : (
+          <div
+            className={`flex w-full items-center justify-center bg-slate-100 p-4 text-center text-sm text-slate-600 lg:h-[70vh] ${
+              sinGoogle ? "min-h-32" : "h-[50vh] min-h-72"
+            }`}
+          >
+            {sinGoogle ? "Mapa no disponible en este ambiente." : "Cargando mapa…"}
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col gap-4 lg:col-start-2 lg:row-start-2">

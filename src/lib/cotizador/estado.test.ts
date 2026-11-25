@@ -230,6 +230,15 @@ describe("cuerpoSolicitud (contrato de /api/rutas)", () => {
     });
   });
 
+  it("envía el place_id del destino elegido en las sugerencias (KPI-05)", () => {
+    const estado = aplicar(ESTADO_INICIAL, {
+      type: "DESTINO_FIJADO",
+      destino: destinoDesdeBusqueda({ lat: -33.4175, lng: -70.6062, texto: "Costanera Center", placeId: "ChIJ-x" }),
+      ahora: T1,
+    });
+    expect(cuerpoSolicitud(estado)?.destino.place_id).toBe("ChIJ-x");
+  });
+
   it("es null sin destino", () => {
     expect(cuerpoSolicitud(ESTADO_INICIAL)).toBeNull();
   });
