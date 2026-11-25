@@ -1,5 +1,5 @@
 // Interfaz común de los proveedores de rutas (HU03; CU03, CU04; RN-05).
-// Google Routes se agregará como otra implementación sin cambiar /api/rutas ni su contrato.
+// Implementaciones: Google Routes API (principal, google-routes.ts) y Haversine × coeficiente (respaldo).
 import type { Coordenada } from "@/lib/tarifa/geo";
 
 // Coincide con el CHECK de cotizacion.metodo_calculo
@@ -28,8 +28,28 @@ export interface ProveedorRutas {
 // RN-05: 1.200 ms dentro de la función para que el respaldo también quede bajo los 2 s de HU03
 export const TIEMPO_MAXIMO_PROVEEDOR_MS = 1200;
 
+// Código de la falla del proveedor principal: es lo único que se registra (KPI-06; nunca su mensaje)
+export type CodigoFallaRutas =
+  | "TIEMPO_AGOTADO"
+  | `HTTP_${number}`
+  | "RED"
+  | "SIN_RUTAS"
+  | "RESPUESTA_INVALIDA";
+
+export class ErrorProveedorRutas extends Error {
+  constructor(readonly codigo: CodigoFallaRutas) {
+    super(`Proveedor de rutas: ${codigo}`);
+    this.name = "ErrorProveedorRutas";
+  }
+}
+
+// Para el registro del servidor: el código si es una falla conocida, «DESCONOCIDO» en otro caso
+export function codigoDeFalla(motivo: unknown): CodigoFallaRutas | "DESCONOCIDO" {
+  return motivo instanceof ErrorProveedorRutas ? motivo.codigo : "DESCONOCIDO";
+}
+
 interface OpcionesCalculo {
-  // null mientras no haya Google Routes (decisión del 2-nov-2026: gratuito primero)
+  // null si no hay llave de servidor de Google: todas las cotizaciones usan el respaldo
   principal: ProveedorRutas | null;
   respaldo: ProveedorRutas;
   tiempoMaximoMs?: number;
@@ -47,10 +67,7 @@ export async function calcularRutaConRespaldo(
   const controlador = new AbortController();
   let temporizador: ReturnType<typeof setTimeout> | undefined;
   const limite = new Promise<never>((_, rechazar) => {
-    temporizador = setTimeout(
-      () => rechazar(new Error(`Proveedor sin respuesta en ${tiempoMaximoMs} ms`)),
-      tiempoMaximoMs
-    );
+    temporizador = setTimeout(() => rechazar(new ErrorProveedorRutas("TIEMPO_AGOTADO")), tiempoMaximoMs);
   });
 
   try {

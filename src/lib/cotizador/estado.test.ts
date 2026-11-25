@@ -12,7 +12,7 @@ import type { DatosCotizacion } from "./respuesta";
 
 const T0 = "2026-11-04T17:58:30.000Z";
 const T1 = "2026-11-04T17:59:10.000Z";
-const COSTANERA = destinoDesdeBusqueda({ lat: -33.4175, lng: -70.6062, texto: "Costanera Center" });
+const COSTANERA = destinoDesdeBusqueda({ lat: -33.4175, lng: -70.6062, texto: "Costanera Center", placeId: null });
 
 const datos = (cotizacion_id: number, monto: number): DatosCotizacion => ({
   cotizacion_id,
@@ -228,6 +228,15 @@ describe("cuerpoSolicitud (contrato de /api/rutas)", () => {
       iniciada_at: T0,
       recargos: ["NOCTURNO"],
     });
+  });
+
+  it("envía el place_id del destino elegido en las sugerencias (KPI-05)", () => {
+    const estado = aplicar(ESTADO_INICIAL, {
+      type: "DESTINO_FIJADO",
+      destino: destinoDesdeBusqueda({ lat: -33.4175, lng: -70.6062, texto: "Costanera Center", placeId: "ChIJ-x" }),
+      ahora: T1,
+    });
+    expect(cuerpoSolicitud(estado)?.destino.place_id).toBe("ChIJ-x");
   });
 
   it("es null sin destino", () => {

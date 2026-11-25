@@ -3,7 +3,7 @@ import { distanciaEstimadaKm } from "@/lib/tarifa/monto";
 import type { ProveedorRutas } from "./proveedor";
 
 // Respaldo de CU04 (RN-05): línea recta × coeficiente de sinuosidad, sin duración ni polilínea.
-// Hoy es el único proveedor; no llama a servicios externos.
+// No llama a servicios externos.
 export const proveedorHaversine: ProveedorRutas = {
   async calcular({ origen, destino, coefSinuosidad }) {
     return {

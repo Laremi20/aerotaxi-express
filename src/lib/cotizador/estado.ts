@@ -150,7 +150,8 @@ export function cuerpoSolicitud(estado: EstadoCotizador) {
   const { destino, iniciadaAt, recargos } = estado;
   if (!destino || !iniciadaAt) return null;
   return {
-    destino: { lat: destino.lat, lng: destino.lng, place_id: null, texto: destino.texto },
+    // KPI-05: place_id solo si el destino viene de una sugerencia de Places (New)
+    destino: { lat: destino.lat, lng: destino.lng, place_id: destino.placeId, texto: destino.texto },
     iniciada_at: iniciadaAt,
     recargos,
   };
