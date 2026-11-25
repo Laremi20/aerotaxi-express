@@ -11,7 +11,9 @@ export async function proxy(request: NextRequest) {
   if (pathname.startsWith("/api")) return response;
 
   const esLogin = pathname === "/login";
-  if (!autenticado && !esLogin) return redirigir(request, response, "/login");
+  // Sin sesión también se puede pedir y abrir el enlace de recuperación (CU11)
+  const esPublica = esLogin || pathname === "/recuperar" || pathname === "/auth/confirmar";
+  if (!autenticado && !esPublica) return redirigir(request, response, "/login");
   if (autenticado && esLogin) return redirigir(request, response, "/");
 
   return response;
