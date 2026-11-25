@@ -71,6 +71,7 @@ export default async function PaginaMisViajes() {
   return (
     <Contenedor nombre={sesion.nombre}>
       <MisViajes
+        driverId={sesion.usuarioId}
         hoy={grupos.hoy}
         proximos={grupos.proximos}
         completados={grupos.completados}

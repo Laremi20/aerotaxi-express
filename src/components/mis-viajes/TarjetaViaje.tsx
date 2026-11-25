@@ -26,10 +26,12 @@ const CLASE_ESTADO: Record<EstadoViaje, string> = {
 interface Props {
   viaje: ViajeConductor;
   ahora: Date;
+  // CU12 4a: asignado mientras la pantalla estaba abierta (llegó por Realtime)
+  nuevo?: boolean;
   onMensaje: (mensaje: string) => void;
 }
 
-export default function TarjetaViaje({ viaje, ahora, onMensaje }: Props) {
+export default function TarjetaViaje({ viaje, ahora, nuevo = false, onMensaje }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [iniciando, iniciarTransicion] = useTransition();
 
@@ -51,10 +53,16 @@ export default function TarjetaViaje({ viaje, ahora, onMensaje }: Props) {
   return (
     <article
       aria-labelledby={`titulo-viaje-${viaje.viaje_id}`}
-      className="flex flex-col gap-3 rounded-2xl border border-slate-300 bg-white p-4 shadow-sm"
+      className={`flex flex-col gap-3 rounded-2xl border bg-white p-4 shadow-sm ${
+        nuevo ? "border-blue-800 ring-2 ring-blue-700" : "border-slate-300"
+      }`}
     >
+      {nuevo && (
+        <p className="w-fit rounded-full bg-blue-700 px-3 py-1 text-sm font-bold text-white">Nuevo</p>
+      )}
       <div className="flex items-start justify-between gap-3">
         <h3 id={`titulo-viaje-${viaje.viaje_id}`} className="min-w-0 text-lg leading-snug font-bold break-words text-slate-900">
+          {nuevo && <span className="sr-only">Viaje nuevo: </span>}
           {viaje.destino_texto ?? `Cotización #${viaje.cotizacion_id}`}
         </h3>
         <p className={`shrink-0 rounded-full border px-3 py-1 text-sm font-bold ${CLASE_ESTADO[viaje.estado]}`}>
