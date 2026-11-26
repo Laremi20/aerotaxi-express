@@ -84,3 +84,23 @@ export function IconoAlerta(props: Props) {
     </Icono>
   );
 }
+
+export function IconoAuto(props: Props) {
+  return (
+    <Icono {...props}>
+      <path d="M5 16V11l2-5h10l2 5v5" />
+      <path d="M3 16h18v3H3zM5 11h14" />
+      <circle cx="7.5" cy="16" r="1.5" />
+      <circle cx="16.5" cy="16" r="1.5" />
+    </Icono>
+  );
+}
+
+export function IconoSinSenal(props: Props) {
+  return (
+    <Icono {...props}>
+      <path d="M3 3l18 18" />
+      <path d="M8.5 16.5a5 5 0 0 1 7 0M5 13a10 10 0 0 1 5.2-2.8M14 10.3A10 10 0 0 1 19 13M12 20h.01" />
+    </Icono>
+  );
+}

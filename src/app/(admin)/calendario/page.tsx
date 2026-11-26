@@ -24,7 +24,9 @@ export default async function PaginaCalendario({ searchParams }: Props) {
   const cotizacionPedida = typeof parametros.cotizacion === "string" ? Number(parametros.cotizacion) : null;
 
   const supabase = await crearClienteServidor();
-  const [conductores, pendientes, viajes] = await Promise.all([
+  const [flota, conductores, pendientes, viajes] = await Promise.all([
+    // RLS (admin_lee_su_flota): solo la flota del administrador; filtra los eventos de Realtime (HU06)
+    supabase.from("flota").select("flota_id").maybeSingle(),
     supabase
       .from("conductor")
       .select("driver_id, nombre, patente, estado_disponibilidad")
@@ -49,9 +51,9 @@ export default async function PaginaCalendario({ searchParams }: Props) {
       .order("franja_inicio"),
   ]);
 
-  const error = conductores.error ?? pendientes.error ?? viajes.error;
-  if (error) {
-    console.error("[calendario] lectura", error.code);
+  const error = flota.error ?? conductores.error ?? pendientes.error ?? viajes.error;
+  if (error || !flota.data) {
+    console.error("[calendario] lectura", error?.code ?? "el usuario no administra una flota");
     return (
       <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-4 p-4">
         <h1 className="text-xl font-bold text-slate-900">Calendario</h1>
@@ -104,6 +106,7 @@ export default async function PaginaCalendario({ searchParams }: Props) {
     <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-4 p-4">
       <h1 className="text-xl font-bold text-slate-900">Calendario</h1>
       <Calendario
+        flotaId={flota.data.flota_id}
         // Al cambiar de día se reinicia el formulario con la hora sugerida de ese día
         key={fecha}
         dia={{ fecha, inicio: inicio.toISOString(), fin: fin.toISOString() }}
