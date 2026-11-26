@@ -47,6 +47,18 @@ export function validarNuevaContrasena(nueva: unknown, confirmacion: unknown): R
   return { ok: true, contrasena: nueva };
 }
 
+// HU04/P10: el conductor creado con contraseña temporal debe cambiarla al primer ingreso.
+// La marca va en app_metadata porque solo la llave service role puede escribirla: el usuario no la borra.
+export const MARCA_CONTRASENA_TEMPORAL = "debe_cambiar_contrasena";
+
+export function exigeCambioContrasena(appMetadata: unknown): boolean {
+  return (
+    typeof appMetadata === "object" &&
+    appMetadata !== null &&
+    (appMetadata as Record<string, unknown>)[MARCA_CONTRASENA_TEMPORAL] === true
+  );
+}
+
 // Errores de updateUser traducidos (códigos de Supabase Auth); nunca el mensaje del proveedor
 export function mensajeErrorContrasena(codigo: string | undefined): string {
   switch (codigo) {

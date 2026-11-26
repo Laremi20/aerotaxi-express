@@ -2,9 +2,12 @@
 
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { crearClienteAdmin } from "@/lib/supabase/admin";
 import { crearClienteServidor } from "@/lib/supabase/servidor";
 import {
   esCorreoPlausible,
+  exigeCambioContrasena,
+  MARCA_CONTRASENA_TEMPORAL,
   MENSAJE_RECUPERACION,
   mensajeErrorContrasena,
   validarNuevaContrasena,
@@ -87,6 +90,19 @@ export async function definirContrasena(_previo: EstadoContrasena, formData: For
   if (error) {
     console.warn("[auth] definir contraseña", error.code ?? error.status);
     return { error: mensajeErrorContrasena(error.code) };
+  }
+
+  // HU04: quita la marca de contraseña temporal (app_metadata solo se escribe con service role)
+  if (exigeCambioContrasena(user.app_metadata)) {
+    try {
+      const { error: errorMarca } = await crearClienteAdmin().auth.admin.updateUserById(user.id, {
+        app_metadata: { [MARCA_CONTRASENA_TEMPORAL]: false },
+      });
+      if (errorMarca) throw errorMarca;
+    } catch (errorMarca) {
+      console.error("[auth] contraseña temporal: no se pudo quitar la marca", (errorMarca as { code?: string }).code);
+      return { error: "Tu contraseña se guardó, pero no pudimos terminar. Inténtalo de nuevo con otra contraseña." };
+    }
   }
 
   // La raíz redirige según el rol (HU08)

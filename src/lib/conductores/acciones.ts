@@ -5,6 +5,7 @@
 // admin_actualiza_conductores) y las restricciones de la base deciden. La llave service role solo
 // se usa para crear el usuario en Supabase Auth y, si falla la fila, revertirlo.
 import { revalidatePath } from "next/cache";
+import { MARCA_CONTRASENA_TEMPORAL } from "@/lib/auth/recuperacion";
 import { crearClienteAdmin } from "@/lib/supabase/admin";
 import { crearClienteServidor } from "@/lib/supabase/servidor";
 import { errorAuthConductor, errorBaseConductor, mensajeErrorEstadoConductor, MENSAJES_ERROR_CONDUCTOR } from "./errores";
@@ -80,6 +81,8 @@ export async function crearConductor(formData: FormData): Promise<ResultadoCondu
     email,
     password: contrasena,
     email_confirm: true,
+    // Al primer ingreso se le exige definir su contraseña (exigirRol → /definir-contrasena)
+    app_metadata: { [MARCA_CONTRASENA_TEMPORAL]: true },
   });
   if (errorAuth || !creado.user) {
     console.warn("[conductores] alta: auth", errorAuth?.code ?? errorAuth?.status);

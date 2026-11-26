@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   destinoSeguro,
   esCorreoPlausible,
+  exigeCambioContrasena,
   MENSAJE_ENLACE_INVALIDO,
   mensajeErrorContrasena,
   tipoEnlace,
@@ -68,5 +69,16 @@ describe("mensajeErrorContrasena", () => {
     expect(mensajeErrorContrasena("session_expired")).toBe(MENSAJE_ENLACE_INVALIDO);
     expect(mensajeErrorContrasena("unexpected_failure")).toBe("No fue posible guardar la contraseña. Inténtalo de nuevo.");
     expect(mensajeErrorContrasena(undefined)).toBe("No fue posible guardar la contraseña. Inténtalo de nuevo.");
+  });
+});
+
+describe("exigeCambioContrasena (HU04, contraseña temporal)", () => {
+  it("exige el cambio solo si la marca es exactamente true", () => {
+    expect(exigeCambioContrasena({ debe_cambiar_contrasena: true, provider: "email" })).toBe(true);
+    expect(exigeCambioContrasena({ debe_cambiar_contrasena: false })).toBe(false);
+    expect(exigeCambioContrasena({ debe_cambiar_contrasena: "true" })).toBe(false);
+    expect(exigeCambioContrasena({ provider: "email" })).toBe(false);
+    expect(exigeCambioContrasena(undefined)).toBe(false);
+    expect(exigeCambioContrasena(null)).toBe(false);
   });
 });
